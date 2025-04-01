@@ -18,4 +18,12 @@ public async Task<IActionResult> Get()
 return Ok("You're authorized");
 }
 
+// Endepunkt kun for "admin"-rollen
+    [Authorize(Roles = "admin")]
+    [HttpGet("admin")]
+    public async Task<IActionResult> GetAdmin()
+    {
+        return Ok("Welcome, admin!");
+    }
+
 }

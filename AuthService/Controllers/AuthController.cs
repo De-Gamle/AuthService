@@ -30,10 +30,16 @@ var securityKey =
 new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Secret"]));
 var credentials =
 new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
-var claims = new[]
-{
-new Claim(ClaimTypes.NameIdentifier, username)
-};
+var claims = new List<Claim>
+    {
+        new Claim(ClaimTypes.NameIdentifier, username)
+    };
+
+    // Tilføj brugerdefineret claim for "admin"
+    if (username == "admin")
+    {
+        claims.Add(new Claim(ClaimTypes.Role, "admin"));
+    }
 var token = new JwtSecurityToken(
 _config["Issuer"],
 audience:"http://localhost",
@@ -47,7 +53,8 @@ return new JwtSecurityTokenHandler().WriteToken(token);
 [HttpPost("login")]
 public async Task<IActionResult> Login([FromBody] LoginModel login)
 {
-if (login.Username == "haavy_user" && login.Password == "aaakodeord")
+if ((login.Username == "haavy_user" && login.Password == "aaakodeord") ||
+        (login.Username == "admin" && login.Password == "adminkodeord"))
 {
 var token = GenerateJwtToken(login.Username);
 return Ok(new { token });
@@ -55,15 +62,6 @@ return Ok(new { token });
 return Unauthorized();
 }
 
-}
-
-
-
-
-public class LoginModel
-{
-public string? Username { get; set; }
-public string? Password { get; set; }
 }
 
 
