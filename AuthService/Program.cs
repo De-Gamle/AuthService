@@ -6,6 +6,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 string mySecret = Environment.GetEnvironmentVariable("Secret") ?? "none";
 string myIssuer = Environment.GetEnvironmentVariable("Issuer") ?? "none";
+
 builder.Services
 .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 .AddJwtBearer(options =>
@@ -16,7 +17,7 @@ ValidateIssuer = true,
 ValidateAudience = true,
 ValidateLifetime = true,
 ValidateIssuerSigningKey = true,
-ValidIssuer = myIssuer,
+ValidIssuer = myIssuer, 
 ValidAudience = "http://localhost",
 IssuerSigningKey =
 new SymmetricSecurityKey(Encoding.UTF8.GetBytes(mySecret))

@@ -36,7 +36,7 @@ new Claim(ClaimTypes.NameIdentifier, username)
 };
 var token = new JwtSecurityToken(
 _config["Issuer"],
-"http://localhost",
+audience:"http://localhost",
 claims,
 expires: DateTime.Now.AddMinutes(15),
 signingCredentials: credentials);

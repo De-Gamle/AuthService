@@ -12,7 +12,7 @@ public class TestController : ControllerBase
 {
 
 [Authorize]
-[HttpGet("test")]
+[HttpGet]
 public async Task<IActionResult> Get()
 {
 return Ok("You're authorized");
