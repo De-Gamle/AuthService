@@ -26,27 +26,41 @@ _logger = logger;
 
 private string GenerateJwtToken(string username)
 {
-var securityKey =
-new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Secret"]));
-var credentials =
-new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
-var claims = new List<Claim>
+    var secret = _config["Secret"];
+    var issuer = _config["Issuer"];
+
+    if (string.IsNullOrEmpty(secret))
+    {
+        _logger.LogError("Secret er ikke defineret i konfigurationen.");
+        throw new ArgumentNullException(nameof(secret), "Secret er ikke defineret i konfigurationen.");
+    }
+
+    if (string.IsNullOrEmpty(issuer))
+    {
+        _logger.LogError("Issuer er ikke defineret i konfigurationen.");
+        throw new ArgumentNullException(nameof(issuer), "Issuer er ikke defineret i konfigurationen.");
+    }
+
+    var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
+    var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+    var claims = new List<Claim>
     {
         new Claim(ClaimTypes.NameIdentifier, username)
     };
 
-    // Tilføj brugerdefineret claim for "admin"
     if (username == "admin")
     {
         claims.Add(new Claim(ClaimTypes.Role, "admin"));
     }
-var token = new JwtSecurityToken(
-_config["Issuer"],
-audience:"http://localhost",
-claims,
-expires: DateTime.Now.AddMinutes(15),
-signingCredentials: credentials);
-return new JwtSecurityTokenHandler().WriteToken(token);
+
+    var token = new JwtSecurityToken(
+        issuer,
+        audience: "http://localhost",
+        claims,
+        expires: DateTime.Now.AddMinutes(15),
+        signingCredentials: credentials);
+
+    return new JwtSecurityTokenHandler().WriteToken(token);
 }
 
 [AllowAnonymous]

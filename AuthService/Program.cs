@@ -4,36 +4,86 @@ using Microsoft.IdentityModel.Tokens;
 using VaultSharp;
 using VaultSharp.V1.AuthMethods.Token;
 using VaultSharp.V1.Commons;
+using VaultSharp.V1.AuthMethods;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Konfigurer Vault-klienten
-var vaultAddress = "https://localhost:8201"; // Vault-serverens adresse
-var vaultToken = "00000000-0000-0000-0000-000000000000"; // Root-token fra din Vault
-var authMethod = new TokenAuthMethodInfo(vaultToken);
-var vaultClientSettings = new VaultClientSettings(vaultAddress, authMethod);
-var vaultClient = new VaultClient(vaultClientSettings);
+// Tilføj logging
+var logger = builder.Services.BuildServiceProvider().GetRequiredService<ILoggerFactory>().CreateLogger("VaultLogger");
 
-// Hent hemmeligheder fra Vault
-Secret<SecretData> secretData = await vaultClient.V1.Secrets.KeyValue.V2.ReadSecretAsync("kv/my-secret");
-string mySecret = secretData.Data.Data["Secret"].ToString();
-string myIssuer = secretData.Data.Data["Issuer"].ToString();
+var httpClientHandler = new HttpClientHandler();
+var EndPoint = "https://localhost:8201/";
+httpClientHandler.ServerCertificateCustomValidationCallback =
+(message, cert, chain, sslPolicyErrors) => { return true; };
 
-builder.Services
+// Initialize one of the several auth methods.
+IAuthMethodInfo authMethod =
+new TokenAuthMethodInfo("00000000-0000-0000-0000-000000000000");
+// Initialize settings. You can also set proxies, custom delegates etc. here.
+var vaultClientSettings = new VaultClientSettings(EndPoint, authMethod)
+{
+    Namespace = "",
+    MyHttpClientProviderFunc = handler
+    => new HttpClient(httpClientHandler)
+    {
+        BaseAddress = new Uri(EndPoint)
+    }
+};
+IVaultClient vaultClient = new VaultClient(vaultClientSettings);
+
+try
+{
+    // Hent hemmeligheder fra Vault
+    logger.LogInformation("Henter hemmeligheder fra Vault...");
+    Secret<SecretData> secretData = await vaultClient.V1.Secrets.KeyValue.V2.ReadSecretAsync("my-secret", mountPoint: "secret");
+
+    string mySecret = secretData.Data.Data["Secret"]?.ToString() ?? throw new Exception("Secret er ikke fundet i Vault.");
+    string myIssuer = secretData.Data.Data["Issuer"]?.ToString() ?? throw new Exception("Issuer er ikke fundet i Vault.");
+
+    builder.Configuration["Secret"] = mySecret;
+    builder.Configuration["Issuer"] = myIssuer;
+
+    logger.LogInformation("Hemmeligheder hentet fra Vault:");
+    logger.LogInformation($"Secret: {mySecret}");
+    logger.LogInformation($"Issuer: {myIssuer}");
+
+    builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        var secret = builder.Configuration["Secret"];
+        var issuer = builder.Configuration["Issuer"];
+
+        if (string.IsNullOrEmpty(secret))
+        {
+            logger.LogError("Secret er ikke defineret i konfigurationen.");
+            throw new ArgumentNullException(nameof(secret), "Secret er ikke defineret i konfigurationen.");
+        }
+
+        if (string.IsNullOrEmpty(issuer))
+        {
+            logger.LogError("Issuer er ikke defineret i konfigurationen.");
+            throw new ArgumentNullException(nameof(issuer), "Issuer er ikke defineret i konfigurationen.");
+        }
+
         options.TokenValidationParameters = new TokenValidationParameters()
         {
             ValidateIssuer = true,
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = myIssuer,
+            ValidIssuer = issuer,
             ValidAudience = "http://localhost",
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(mySecret))
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret))
         };
     });
+}
+catch (Exception ex)
+{
+    logger.LogError($"Fejl under hentning af hemmeligheder fra Vault: {ex.Message}");
+    throw;
+}
 
 // Add services to the container.
 builder.Services.AddControllers();
