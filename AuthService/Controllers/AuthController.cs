@@ -16,16 +16,17 @@ public class AuthController : ControllerBase
 
     private readonly IConfiguration _config;
 
-    
+    private readonly HttpClient _httpClient;
 
-    public AuthController(ILogger<AuthController> logger, IConfiguration config)
+    public AuthController(ILogger<AuthController> logger, IConfiguration config, HttpClient httpClient)
 {
-_config = config;
-_logger = logger;
+    _config = config;
+    _logger = logger;
+    _httpClient = httpClient;
 }
 
 // Generer JWT token
-private string GenerateJwtToken(string username)
+private string GenerateJwtToken(string username, string? role)
 {
     var secret = _config["Secret"];
     var issuer = _config["Issuer"];
@@ -49,17 +50,9 @@ private string GenerateJwtToken(string username)
         new Claim(ClaimTypes.NameIdentifier, username)
     };
 
-    // Tilføj roller baseret på brugernavn
-    // Her kan du tilføje logik til at tildele roller baseret på brugernavn eller andre kriterier
-    if (username == "haavy_user")
+    if (!string.IsNullOrEmpty(role))
     {
-        claims.Add(new Claim(ClaimTypes.Role, "user"));
-    }
-    else
-
-    if (username == "admin")
-    {
-        claims.Add(new Claim(ClaimTypes.Role, "admin"));
+        claims.Add(new Claim(ClaimTypes.Role, role));
     }
 
     var token = new JwtSecurityToken(
@@ -72,17 +65,50 @@ private string GenerateJwtToken(string username)
     return new JwtSecurityTokenHandler().WriteToken(token);
 }
 
+private async Task<(bool IsValid, string? Role)> ValidateUserAsync(string username, string password)
+{
+    var userServiceUrl = _config["UserServiceUrl"]; // Henter UserService URL fra konfigurationen
+
+    try
+    {
+        var response = await _httpClient.PostAsJsonAsync($"{userServiceUrl}/User/validate", new { Username = username, Password = password });
+
+        if (response.IsSuccessStatusCode)
+        {
+            var result = await response.Content.ReadFromJsonAsync<ValidateUserResponse>();
+            string? role = result?.Role;
+            _logger.LogInformation("User validated successfully via UserService with role: {Role}", role);
+            return (true, role);
+        }
+
+        _logger.LogWarning("User validation failed via UserService. Status code: {StatusCode}", response.StatusCode);
+        return (false, null);
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error while communicating with UserService.");
+        return (false, null);
+    }
+}
+
 [AllowAnonymous]
 [HttpPost("login")]
 public async Task<IActionResult> Login([FromBody] LoginModel login)
 {
-if ((login.Username == "haavy_user" && login.Password == "aaakodeord") ||
-        (login.Username == "admin" && login.Password == "adminkodeord"))
-{
-var token = GenerateJwtToken(login.Username);
-return Ok(new { token });
+    var (isValid, role) = await ValidateUserAsync(login.Username, login.Password);
+
+    if (isValid)
+    {
+        var token = GenerateJwtToken(login.Username, role);
+        return Ok(new { token });
+    }
+
+    return Unauthorized(new { message = "Invalid username or password" });
 }
-return Unauthorized();
+
+public class ValidateUserResponse
+{
+    public string? Role { get; set; }
 }
 
 }

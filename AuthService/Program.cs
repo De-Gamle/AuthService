@@ -88,6 +88,7 @@ catch (Exception ex)
 }
 
 // Tilføj services til containeren.
+builder.Services.AddHttpClient();
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
