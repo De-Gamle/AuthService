@@ -10,7 +10,7 @@ using VaultSharp.V1.AuthMethods;
 var builder = WebApplication.CreateBuilder(args);
 
 // Tilføj logging
-var logger = builder.Services.BuildServiceProvider().GetRequiredService<ILoggerFactory>().CreateLogger("VaultLogger");
+var logger = LoggerFactory.Create(logging => logging.AddConsole()).CreateLogger("VaultLogger");
 
 var httpClientHandler = new HttpClientHandler();
 var EndPoint = "https://localhost:8201/";
