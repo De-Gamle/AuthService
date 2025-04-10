@@ -24,6 +24,7 @@ _config = config;
 _logger = logger;
 }
 
+// Generer JWT token
 private string GenerateJwtToken(string username)
 {
     var secret = _config["Secret"];
@@ -47,6 +48,14 @@ private string GenerateJwtToken(string username)
     {
         new Claim(ClaimTypes.NameIdentifier, username)
     };
+
+    // Tilføj roller baseret på brugernavn
+    // Her kan du tilføje logik til at tildele roller baseret på brugernavn eller andre kriterier
+    if (username == "haavy_user")
+    {
+        claims.Add(new Claim(ClaimTypes.Role, "user"));
+    }
+    else
 
     if (username == "admin")
     {

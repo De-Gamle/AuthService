@@ -17,10 +17,10 @@ var EndPoint = "https://localhost:8201/";
 httpClientHandler.ServerCertificateCustomValidationCallback =
 (message, cert, chain, sslPolicyErrors) => { return true; };
 
-// Initialize one of the several auth methods.
+// Konfigurer Vault klienten
+// Du skal bruge en gyldig token til at autentificere dig mod Vault. Erstat med din token.
 IAuthMethodInfo authMethod =
 new TokenAuthMethodInfo("00000000-0000-0000-0000-000000000000");
-// Initialize settings. You can also set proxies, custom delegates etc. here.
 var vaultClientSettings = new VaultClientSettings(EndPoint, authMethod)
 {
     Namespace = "",
@@ -34,7 +34,7 @@ IVaultClient vaultClient = new VaultClient(vaultClientSettings);
 
 try
 {
-    // Hent hemmeligheder fra Vault
+    // Henter hemmeligheder fra Vault
     logger.LogInformation("Henter hemmeligheder fra Vault...");
     Secret<SecretData> secretData = await vaultClient.V1.Secrets.KeyValue.V2.ReadSecretAsync("my-secret", mountPoint: "secret");
 
@@ -48,6 +48,8 @@ try
     logger.LogInformation($"Secret: {mySecret}");
     logger.LogInformation($"Issuer: {myIssuer}");
 
+
+// Konfigurer JWT autentificering
     builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -85,13 +87,13 @@ catch (Exception ex)
     throw;
 }
 
-// Add services to the container.
+// Tilføj services til containeren.
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
