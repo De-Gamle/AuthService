@@ -9,16 +9,16 @@ FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
 # Kopier projektfilen og gendan afhængigheder
-COPY ["AuthService.csproj", "./"]
+COPY ["AuthService/AuthService.csproj", "./"]
 RUN dotnet restore "AuthService.csproj"
 
 # Kopier resten af applikationen og byg den
-COPY . .
-RUN dotnet build -c Release -o /app/build
+COPY AuthService/ .
+RUN dotnet build "AuthService.csproj" -c Release -o /app/build
 
 # Publicer applikationen
 FROM build AS publish
-RUN dotnet publish -c Release -o /app/publish
+RUN dotnet publish "AuthService.csproj" -c Release -o /app/publish
 
 # Brug runtime image til at køre applikationen
 FROM base AS final

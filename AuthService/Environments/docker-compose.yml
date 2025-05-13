@@ -1,5 +1,17 @@
-version: "3.8"
+
 services:
+  auth_service:
+    build:
+      context: ../../ # Sørg for, at hele projektet er inkluderet
+      dockerfile: AuthService/Dockerfile
+    ports:
+      - "5162:80"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Vault__Address: "https://vault_dev:8201"
+    depends_on:
+      - vault_dev
+
   vault_dev:
     image: hashicorp/vault:latest
     restart: on-failure:10
@@ -14,7 +26,6 @@ services:
         "default_lease_ttl": "168h", "max_lease_ttl": "720h",
         "ui": true}
       VAULT_DEV_ROOT_TOKEN_ID: '00000000-0000-0000-0000-000000000000'
-      VAULT_TOKEN: '00000000-0000-0000-0000-000000000000'
     cap_add:
       - IPC_LOCK
     volumes:
